@@ -1,1 +1,71 @@
 2017-10-31 20:25:38		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 13:13:29		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 13:15:21		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 14:06:37		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 14:25:30		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 14:26:01		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 14:26:09		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 14:48:37		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 14:49:03		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 14:56:14		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 15:00:26		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 15:07:03		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 15:14:59		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 15:15:35		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 15:16:24		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 15:17:34		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 15:18:00		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 15:18:39		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 15:19:25		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 15:20:37		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 15:23:14		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 15:23:58		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 15:25:18		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 15:26:18		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 15:27:54		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 15:30:49		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 15:32:49		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 15:39:01		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 15:40:36		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 15:45:39		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 15:45:40		Client (192.168.1.4, 56456) connected
+2017-11-01 15:45:40		A new client, 'subscriber', has joined with addr ('192.168.1.4', 56456)
+2017-11-01 15:47:12		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 15:47:13		Client (192.168.1.4, 56482) connected
+2017-11-01 15:47:13		A new client, 'subscriber', has joined with addr ('192.168.1.4', 56482)
+2017-11-01 15:48:45		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 15:48:46		Client (192.168.1.4, 58330) connected
+2017-11-01 15:48:46		A new client, 'subscriber', has joined with addr ('192.168.1.4', 58330)
+2017-11-01 15:49:42		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 15:49:43		Client (192.168.1.4, 60220) connected
+2017-11-01 15:49:43		A new client, 'subscriber', has joined with addr ('192.168.1.4', 60220)
+2017-11-01 16:00:43		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 16:00:44		Client (192.168.1.4, 50092) connected
+2017-11-01 16:00:44		A new client, 'subscriber', has joined with addr ('192.168.1.4', 50092)
+2017-11-01 16:08:43		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 16:08:44		Client (192.168.1.4, 57440) connected
+2017-11-01 16:08:44		A new client, 'subscriber', has joined with addr ('192.168.1.4', 57440)
+2017-11-01 16:09:31		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 16:09:32		Client (192.168.1.4, 57452) connected
+2017-11-01 16:09:32		A new client, 'subscriber', has joined with addr ('192.168.1.4', 57452)
+2017-11-01 16:13:53		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 16:13:54		Client (192.168.1.4, 59284) connected
+2017-11-01 16:13:54		A new client, 'subscriber', has joined with addr ('192.168.1.4', 59284)
+2017-11-01 16:15:41		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 16:15:42		Client (192.168.1.4, 33062) connected
+2017-11-01 16:15:42		A new client, 'subscriber', has joined with addr ('192.168.1.4', 33062)
+2017-11-01 16:30:00		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 16:30:01		Client (192.168.1.4, 34928) connected
+2017-11-01 16:30:01		A new client, 'subscriber', has joined with addr ('192.168.1.4', 34928)
+2017-11-01 16:32:58		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 16:32:59		Client (192.168.1.4, 37262) connected
+2017-11-01 16:32:59		A new client, 'subscriber', has joined with addr ('192.168.1.4', 37262)
+2017-11-01 16:34:52		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 16:34:53		Client (192.168.1.4, 38782) connected
+2017-11-01 16:34:53		A new client, 'subscriber', has joined with addr ('192.168.1.4', 38782)
+2017-11-01 16:52:14		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 16:52:15		Client (192.168.1.4, 40980) connected
+2017-11-01 16:52:15		A new client, 'subscriber', has joined with addr ('192.168.1.4', 40980)
+2017-11-01 16:53:38		Server started	 addr:	192.168.1.4	port:5000 
+2017-11-01 16:53:39		Client (192.168.1.4, 42968) connected
+2017-11-01 16:53:39		A new client, 'subscriber', has joined with addr ('192.168.1.4', 42968)

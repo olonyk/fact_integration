@@ -2,17 +2,20 @@
     the system.
 """
 
-import socket
-import select
-import traceback
 import platform
-from subprocess import check_output
+import select
+import socket
+import traceback
 from datetime import datetime
+from multiprocessing import Process
+from subprocess import check_output
 
-class Server:
+
+class Server(Process):
     """ A simple TCP server.
     """
     def __init__(self):
+        super(Server ,self).__init__()
         # Set log behaviour
         self.do_print = True
         self.do_log = True
@@ -120,6 +123,7 @@ class Server:
             self.log("Warning! The new client: {} was not found in".format(data[1]) \
                      + " the list of connections")
         else:
+            print(data)
             # A message that should be forwarded
             for client, recipient_socket in self.connection_dict.items():
                 if client == data[0]:
