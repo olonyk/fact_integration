@@ -1,3 +1,5 @@
+#/usr/bin/env python2.7
+
 import os
 import sys
 from multiprocessing import Process
@@ -6,7 +8,7 @@ import rospy
 import std_msgs.msg
 import trajectory_msgs.msg
 
-from .client import Client
+from client import Client
 
 
 class Subscriber(Process):
@@ -27,7 +29,6 @@ class Subscriber(Process):
     def parse(self, data):
         """ Parsing trajectory data and sending it to hololens.
         """
-        print "Listener heard something"
         positions = [[str(position) for position in point.positions] for point in data.points]
         positions.insert(0, data.joint_names)
         positions = ";".join([",".join(position) for position in positions])
@@ -35,18 +36,14 @@ class Subscriber(Process):
         os.write(self.pipe_out, positions.encode("utf-8"))
         sys.stdout.flush()
 
-    def listen(self):
-        """ main loop
-        """
-        print "Listening..."
-        rospy.init_node('listener', anonymous=True)
-        rospy.Subscriber("/yumi/traj_moveit", trajectory_msgs.msg.JointTrajectory, self.parse)
-        # spin() simply keeps python from exiting until this node is stopped
-        rospy.spin()
-    
+
     def run(self):
         """ Main loop
         """
-        
-        print("New loop")
-        self.listen()
+        rospy.init_node('listener', anonymous=True)
+        rospy.Subscriber("/yumi/traj_moveit", trajectory_msgs.msg.JointTrajectory, self.parse)
+        rospy.spin()
+
+if __name__ == "__main__":
+    subscriber = Subscriber()
+    subscriber.run()
