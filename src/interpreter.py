@@ -34,8 +34,9 @@ class Interpreter(Process):
 
         # Create and initialize the variables
         self.current_action = None
-        self.active_filters = None
+        self.action_dict = {}
         self.filtered_items = None
+        self.current_block = None
         self.reset()
 
         # Read data base and format it into a mongo_db object
@@ -77,18 +78,68 @@ class Interpreter(Process):
         elif header == "confirm":
             self.confirm(data)
 
+    def confirm(self, confirm_msg):
+        """ Interperet the confirm message, either positive or negative, i.e. either tell YuMi to
+        execute the action or test a new block.
+        param: confirm_msg [String, format defined in README.md]
+        return: N/A
+        """
+        # If a confirmation is recieved, send execute command to yumi, remove the block from the 
+        # data base and send a speech command to hololens.
+        if "true" in confirm_msg:
+            self.send("yumi;execute$")
+            self.remove(self.current_block)
+            self.send("hololens;speech;ok$")
+        # If a negation is recieved and there are blocks still in the list then try the next block
+        # in the list, else start over
+        else:
+            if self.filtered_items:
+                self.current_block = self.filtered_items.pop(0)
+                self.send("yumi;{};{},{}$".format(self.current_action,
+                                                  self.current_block["X"],
+                                                  self.current_block["Y"]))
+            else:
+                self.reset()
+
+    def remove(self, block):
+        """ Remove the specified block from the pymongo database
+        param: block [Dict]
+        return: N/A
+        """
+        self.mongo_db.delete_one({"ID": block[0]})
+
     def action(self, action_msg):
         """ Update the data-base
         param: action_msg [String, format defined in README.md]
         return: N/A
         """
-        action_dict = {}
         for command in action_msg:
-            action_dict[command.split(":")[0]] = command.split(":")[1]
-            
-        filtered_items = list(self.mongo_db.find({"#Color": gui.color.get(),
-                                                  "#Shape": gui.shape.get()},
-                                                  {"<img>": 1, "_id": 0, "ID":1, "X":1, "Y":1}))
+            self.action_dict[command.split(":")[0]] = command.split(":")[1]
+
+        # Update or set the current action
+        if "action" in self.action_dict.keys():
+            self.current_action = self.action_dict["action"]
+            self.action_dict.pop("action")
+        self.filtered_items = list(self.mongo_db.find(self.action_dict,
+                                                      {"_id": 0, "ID":1, "X":1, "Y":1}))
+        # Decide what to do
+        # No objects are found, the current turn is restarted.
+        if not self.filtered_items:
+            self.reset()
+        # If only a few objects remain in the data base, the action is visualized to the user.
+        elif len(self.filtered_items) < 4:
+            self.current_block = self.filtered_items.pop(0)
+            self.send("yumi;{};{},{}$".format(self.current_action,
+                                              self.current_block["X"],
+                                              self.current_block["Y"]))
+        # If there are many objects left the hololens will highlight the ones considered
+        else:
+            msg = []
+            for item in self.filtered_items:
+                msg.append("{},{},{}".format(item["ID"], item["X"][:5], item["Y"][:5]))
+            msg = ";".join(msg)
+            msg = "{};{}$".format("hololens", msg)
+            self.send(msg)
 
     def update(self, update_msg):
         """ Update the data-base
@@ -143,8 +194,9 @@ class Interpreter(Process):
         return: N/A
         """
         self.current_action = None
-        self.active_filters = None
+        self.action_dict = {}
         self.filtered_items = None
+        self.current_block = None
 
     def build(self, data_base_file):
         """ Read data base and format it into a mongo_db object
