@@ -6,6 +6,7 @@ import sys
 from math import pow, sqrt
 from multiprocessing import Process
 from os.path import dirname, join
+from datetime import datetime
 
 from bson.binary import Binary
 from pymongo import MongoClient
@@ -35,7 +36,7 @@ class Interpreter(Process):
         # Create and initialize the variables
         self.current_action = None
         self.action_dict = {}
-        self.filtered_items = None
+        self.filtered_items = []
         self.current_block = None
         self.reset()
 
@@ -68,8 +69,16 @@ class Interpreter(Process):
         """ Interperet the incomming message and take appropriate action.
         param: data [String, format defined in README.md]
         return: N/A
+
+        {'skills': ['pick'], 'attributes': ['red'], 'objects': ['block'], 'feedback': []}
+        {'skills': [], 'attributes': [], 'objects': [], 'feedback': ['yes']}
+        {'skills': [], 'attributes': [], 'objects': [], 'feedback': ['no']}
+        {'skills': ['pick'], 'attributes': [], 'objects': ['Square', 'Red', 'block'], 'feedback': []}
+        {'skills': [], 'attributes': ['red'], 'objects': [], 'feedback': []}
+        {'skills': [], 'attributes': ['blue'], 'objects': ['lego'], 'feedback': []}
         """
-        data = data.split(";")
+        data = self.format_input(data)
+        #data = data.split(";")
         header = data.pop(0)
         if header == "update":
             self.update(data)
@@ -77,6 +86,23 @@ class Interpreter(Process):
             self.action(data)
         elif header == "confirm":
             self.confirm(data)
+        self.print_state()
+
+    def format_input(self, data):
+        """ Interperet the incomming message and take appropriate action.
+        param: data [String, format defined in README.md]
+        return: formatted_data [dictionary]
+        """"
+        data.replace("{", "")
+        data.replace("}", "")
+        data.replace("[", "")
+        data.replace("]", "")
+        data.replace("'", "")
+        data.replace("$", "")
+        # Format json ??
+        formatted_data = {}
+
+        return formatted_data
 
     def confirm(self, confirm_msg):
         """ Interperet the confirm message, either positive or negative, i.e. either tell YuMi to
@@ -185,6 +211,7 @@ class Interpreter(Process):
         param: msg [String]
         return: N/A
         """
+        self.log("Interpreter is sending: {}".format(msg))
         os.write(self.pipe_out, msg.encode("utf-8"))
         sys.stdout.flush()
 
@@ -195,7 +222,7 @@ class Interpreter(Process):
         """
         self.current_action = None
         self.action_dict = {}
-        self.filtered_items = None
+        self.filtered_items = []
         self.current_block = None
 
     def build(self, data_base_file):
@@ -249,3 +276,25 @@ class Interpreter(Process):
         elif re.match( regex, name, re.M|re.I):
             return "regular"
         return "round"
+
+    def log(self, message):
+        """ Add a time stamp and write the message to the log file.
+        """
+        time = datetime.now()
+        time_stamp = "{:04d}-{:02d}-{:02d} {:02d}:{:02d}:{:02d}\t".format(time.year, time.month,\
+                                                                          time.day, time.hour, \
+                                                                          time.minute, time.second)
+        print("{}\t{}".format(time_stamp, message))
+    
+    def print_state(self):
+        print("======Interpeter state======")
+        print("current action:\t{}".format(self.current_action))
+        print("nr items      :\t{}".format(len(self.filtered_items)))
+        if self.current_block:
+            print("current_block:\t{} at ({}, {})".format(self.current_block["ID"], self.current_block["X"], self.current_block["Y"]))
+        else:
+            print("current_block:\tNone")
+        
+        print("filer:")
+        for key, value in self.action_dict.items():
+            print("\t{}:\t{}".format(key, value))
