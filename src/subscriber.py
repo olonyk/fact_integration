@@ -32,7 +32,7 @@ class Subscriber(Process):
         positions = [[str(position) for position in point.positions] for point in data.points]
         positions.insert(0, data.joint_names)
         positions = ";".join([",".join(position) for position in positions])
-        positions = "hololens;trajectory;" + positions
+        positions = "hololens;trajectory;" + positions + "$"
         os.write(self.pipe_out, positions.encode("utf-8"))
         sys.stdout.flush()
 

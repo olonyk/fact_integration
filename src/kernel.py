@@ -5,11 +5,11 @@ import subprocess
 from os.path import realpath, dirname, join
 
 class Kernel(object):
-    def __init__(self):
+    def __init__(self, data_base_file):
         """ Initialize the TCP/IP server, ROS subscriber and the parser. 
         """
         self.server = Server()
-        self.interpreter = Interpreter()
+        self.interpreter = Interpreter(data_base_file)
     
     def run(self):
         print("Kernel running")
