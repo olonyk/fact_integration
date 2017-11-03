@@ -40,7 +40,7 @@ class Server(Process):
         self.connection_dict["server"] = self.server_socket
         self.log("Server started\t addr:\t{}\tport:{} ".format(self.server_socket.getsockname()[0],\
                                                                self.server_socket.getsockname()[1]))
-
+        self.incomplete_message = ""
 
     def run(self):
         """ The main loop of the server.
@@ -106,8 +106,8 @@ class Server(Process):
         for char in data:
             if not ord(char) < 32 or ord(char) > 126:
                 tmp += char
-        data = tmp
-        data = data.split(";")
+        in_data = tmp
+        data = in_data.split(";")
         if data[0] == "close me":
             self.remove_socket(sock)
 
@@ -123,11 +123,30 @@ class Server(Process):
             self.log("Warning! The new client: {} was not found in".format(data[1]) \
                      + " the list of connections")
         else:
-            print(data)
             # A message that should be forwarded
+            sent = False
+            # Reatatch tail
+            if len(data) > 2:
+                data[1] = ";".join(data[1:])
+            # Check if the end-message symbol, $, is read, if not save the message.
+            if not in_data.endswith("$"):
+                self.incomplete_message += in_data
+                print("incomplete_message:", self.incomplete_message)
+                return
             for client, recipient_socket in self.connection_dict.items():
                 if client == data[0]:
+                    sent = True
                     self.send(recipient_socket, data[1])
+                    break
+            if not sent:
+                if self.incomplete_message:
+                        # Try attaching the message with a previosly incomplete one
+                        #print(data)
+                        new_data = self.incomplete_message + in_data
+                        self.incomplete_message = ""
+                        self.parse(None, new_data.encode("utf-8"))
+                elif len(data) > 1:
+                    self.log("Couldn't send '{}' to client '{}', client not in list.".format(data[1], data[0]))
 
     def send(self, recipient_socket, message):
         """ The send command handles the forwarding of messages to different clients of the system.
