@@ -101,6 +101,7 @@ class Server(Process):
             message that should be sent to a specific clien.
         """
         data = data.decode("utf-8")
+        print(data)
         tmp = ""
         # Clean up if the client sent faulty chars
         for char in data:
