@@ -2,10 +2,10 @@
 
 import os
 import sys
+import time
 from multiprocessing import Process
 
 import rospy
-import std_msgs.msg
 import trajectory_msgs.msg
 
 from client import Client
@@ -35,6 +35,7 @@ class Subscriber(Process):
         positions = "hololens;trajectory;" + positions + "$"
         os.write(self.pipe_out, positions.encode("utf-8"))
         sys.stdout.flush()
+        time.sleep(1)
 
 
     def run(self):
