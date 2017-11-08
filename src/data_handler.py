@@ -5,11 +5,12 @@ from os.path import dirname, join
 
 
 class DataHandler(object):
-    def __init__(self, data_file):
+    def __init__(self, data_file=None, log_queue=None):
         """ Constructor. Reads the data file into a multidimensional list.
             param: data_file [String]
             return: self [DataHandler]
         """
+        self.log_queue = log_queue
         self.data_dir = dirname(data_file)
         # Read the given CSV file
         with open(data_file, newline='') as csvfile:
@@ -128,9 +129,21 @@ class DataHandler(object):
             self.data[update_idx][self.x_idx] = update_dict["x"]
             self.data[update_idx][self.y_idx] = update_dict["y"]
         else:
-            print("Min closest block was {:.02f}cm away, no update".format(min_dist*100))
+            self.log("Min closest block was {:.02f}cm away, no update".format(min_dist*100))
+
+    def log(self, message):
+        """ Send the message to the log queue
+            params: message [String]
+            return: None
+        """
+        if self.log_queue:
+            self.log_queue.put("Data Handler#{}".format(message))
 
     def _euclidian(self, x1, y1, x2, y2):
+        """ Calculate the euclidian distance in 2D-space.
+            param: x1, y1, x2, y2 [Strings, points in the space]
+            return [float]
+        """
         return sqrt(pow(float(x1)-float(x2), 2)+pow(float(y1)-float(y2), 2))
 
     def remove(self, current_block):

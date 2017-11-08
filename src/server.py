@@ -14,12 +14,10 @@ from subprocess import check_output
 class Server(Process):
     """ A simple TCP server.
     """
-    def __init__(self):
+    def __init__(self, log_queue=None):
         super(Server ,self).__init__()
         # Set log behaviour
-        self.do_print = True
-        self.do_log = True
-        self.log_file = "log_txt.txt"
+        self.log_queue = log_queue
 
         # List to keep track of socket descriptors
         self.connection_dict = {}
@@ -38,7 +36,7 @@ class Server(Process):
 
         # Add server socket to the list of readable connections
         self.connection_dict["server"] = self.server_socket
-        self.log("Server started\t addr:\t{}\tport:{} ".format(self.server_socket.getsockname()[0],\
+        self.log("Server started at addr: {}, port:{} ".format(self.server_socket.getsockname()[0],\
                                                                self.server_socket.getsockname()[1]))
         self.incomplete_message = ""
 
@@ -101,7 +99,6 @@ class Server(Process):
             message that should be sent to a specific clien.
         """
         data = data.decode("utf-8")
-        print(data)
         tmp = ""
         # Clean up if the client sent faulty chars
         for char in data:
@@ -132,7 +129,7 @@ class Server(Process):
             # Check if the end-message symbol, $, is read, if not save the message.
             if not in_data.endswith("$"):
                 self.incomplete_message += in_data
-                print("incomplete_message:", self.incomplete_message)
+                self.log("incomplete_message: {}".format(self.incomplete_message))
                 return
             for client, recipient_socket in self.connection_dict.items():
                 if client == data[0]:
@@ -142,7 +139,6 @@ class Server(Process):
             if not sent:
                 if self.incomplete_message:
                         # Try attaching the message with a previosly incomplete one
-                        #print(data)
                         new_data = self.incomplete_message + in_data
                         self.incomplete_message = ""
                         self.parse(None, new_data.encode("utf-8"))
@@ -175,15 +171,9 @@ class Server(Process):
             return socket.gethostbyname(socket.gethostname())
 
     def log(self, message):
-        """ Add a time stamp and write the message to the log file.
+        """ Send the message to the log queue
+            params: message [String]
+            return: None
         """
-        time = datetime.now()
-        time_stamp = "{:04d}-{:02d}-{:02d} {:02d}:{:02d}:{:02d}\t".format(time.year, time.month,\
-                                                                          time.day, time.hour, \
-                                                                          time.minute, time.second)
-        message = "{}\t{}".format(time_stamp, message)
-        if self.do_print:
-            print(message)
-        if self.do_log:
-            with open(self.log_file, "a") as log_file:
-                log_file.write(message + "\n")
+        if self.log_queue:
+            self.log_queue.put("Server#{}".format(message))

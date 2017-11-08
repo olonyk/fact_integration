@@ -1,5 +1,6 @@
 import ast
 import csv
+import errno
 import json
 import os
 import re
@@ -12,17 +13,16 @@ from multiprocessing import Process
 from .client import Client
 from .data_handler import DataHandler
 
-
 class Interpreter(Process):
     """ The Interpreter-class is a intermediator between the arcitecture and the ROS-network.
     """
-    def __init__(self, data_base_file):
+    def __init__(self, data_file=None, log_queue=None):
         """ Constructor
         param: data_base_file [path]
         return: Interpreter [Process]
         """
         super(Interpreter, self).__init__()
-
+        self.log_queue = log_queue
         # Create a pipe to communicate to the client process
         self.pipe_in_client, self.pipe_out = os.pipe()
         self.pipe_in, self.pipe_out_client = os.pipe()
@@ -33,8 +33,17 @@ class Interpreter(Process):
                              pipe_out=self.pipe_out_client)
         self.client.start()
 
-        # Read data base and format it.
-        self.data_handler = DataHandler(data_base_file)
+        # Check that the data file is correct.
+        if data_file:
+            if os.path.isfile(data_file):
+                # Read data base and format it.
+                self.data_handler = DataHandler(data_file, log_queue=log_queue)
+            else:
+                self.log("Error, Data file does not exist: {}".format(data_file))
+                raise OSError(data_file)
+        else:
+            self.log("Error, No data file given, you are using this module wrong, ask Olov")
+            raise OSError
 
         # Create and initialize the variables
         self.current_action = None
@@ -58,7 +67,7 @@ class Interpreter(Process):
                 if sock == self.pipe_in:
                     data = os.read(self.pipe_in, 4096)
                     if not data:
-                        print('\nDisconnected from server')
+                        self.log("Disconnected from server")
                         sys.exit()
                     else:
                         self.parse(data.decode("utf-8"))
@@ -68,22 +77,21 @@ class Interpreter(Process):
         param: data [String, format defined in README.md]
         return: N/A
         """
-        d_len = len(data)
-        print("="*d_len)
-        print(data)
-        print("="*d_len)
+        self.log("Parsing data: {}".format(data))
         try:
             data = data.replace("$", "")
             data = ast.literal_eval(data)
-            if len(data["feedback"]) > 0:
+            if data["feedback"]:
                 self.confirm(data)
             else:
                 self.action(data)
-        except:
+        except ValueError:
+            data = data.split(";")
             header = data.pop(0)
             if header == "update":
                 self.update(data)
-        self.print_state()
+            else:
+                self.log("Unknown request: {}".format(header))
 
     def confirm(self, data):
         """ Interperet the confirm message, either positive or negative, i.e. either tell YuMi to
@@ -176,13 +184,12 @@ class Interpreter(Process):
         self.data_handler.reset_filter()
 
     def log(self, message):
-        """ Add a time stamp and write the message to the log file.
+        """ Send the message to the log queue
+            params: message [String]
+            return: None
         """
-        time = datetime.now()
-        time_stamp = "{:04d}-{:02d}-{:02d} {:02d}:{:02d}:{:02d}\t".format(time.year, time.month,\
-                                                                          time.day, time.hour, \
-                                                                          time.minute, time.second)
-        print("{}\t{}".format(time_stamp, message))
+        if self.log_queue:
+            self.log_queue.put("Interpreter#{}".format(message))
     
     def print_state(self):
         print("======Interpeter state======")
