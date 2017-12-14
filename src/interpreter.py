@@ -1,22 +1,20 @@
+""" Module doc string
+"""
 import ast
-import csv
-import errno
-import json
+import math
 import os
-import re
 import select
 import sys
-import time
-from datetime import datetime
 from multiprocessing import Process
-
+import time
+import threading
 from .client import Client
-from .data_handler import DataHandler
+
 
 class Interpreter(Process):
     """ The Interpreter-class is a intermediator between the arcitecture and the ROS-network.
     """
-    def __init__(self, data_file=None, log_queue=None):
+    def __init__(self, log_queue=None):
         """ Constructor
         param: data_base_file [path]
         return: Interpreter [Process]
@@ -33,155 +31,234 @@ class Interpreter(Process):
                              pipe_out=self.pipe_out_client)
         self.client.start()
 
-        # Check that the data file is correct.
-        if data_file:
-            if os.path.isfile(data_file):
-                # Read data base and format it.
-                self.data_handler = DataHandler(data_file, log_queue=log_queue)
-            else:
-                self.log("Error, Data file does not exist: {}".format(data_file))
-                raise OSError(data_file)
-        else:
-            self.log("Error, No data file given, you are using this module wrong, ask Olov")
-            raise OSError
-
         # Create and initialize the variables
-        self.current_action = None
-        self.action_dict = {}
-        self.reset()
+        self.likelihood_threshold = 0.6
+        self.current_action = "pick"
+        self.known_attr = ["red", "blue", "green", "yellow"]
+        self.blocks = []
+        self.first_verbal = False
+        self.first_disamb = False
+        self._reset()
+
+    def _reset(self):
+        self.current_action = "pick"
+        self.blocks = []
+        self.first_verbal = False
+        self.first_disamb = False
 
     def run(self):
-        """ Main loop.
+        """ Main loop. Simply read messages from the server and send them to self._parse() to take
+        appropriate action. 
         param: N/A
         return: N/A
         """
+        self._print_blocks()
         while True:
             # Wait for incomming message from the server (via the client)
             socket_list = [self.pipe_in]
-
             # Get the list sockets which are readable
             read_sockets, _, _ = select.select(socket_list, [], [])
-
             for sock in read_sockets:
-                # Incoming message from remote server
+                # Incoming message from server
                 if sock == self.pipe_in:
                     data = os.read(self.pipe_in, 4096)
                     if not data:
-                        self.log("Disconnected from server")
+                        #self.log("Disconnected from server")
                         sys.exit()
                     else:
-                        self.parse(data.decode("utf-8"))
+                        self._parse(data.decode("utf-8"))
 
-    def parse(self, data):
+    def _parse(self, data):
         """ Interperet the incomming message and take appropriate action.
         param: data [String, format defined in README.md]
         return: N/A
         """
-        self.log("Parsing data: {}".format(data))
-        try:
-            data = data.replace("$", "")
-            data = ast.literal_eval(data)
-            if data["feedback"]:
-                self.confirm(data)
-            else:
-                self.action(data)
-        except ValueError:
-            data = data.split(";")
-            header = data.pop(0)
-            if header == "update":
-                self.update(data)
-            else:
-                self.log("Unknown request: {}".format(header))
-
-    def confirm(self, data):
-        """ Interperet the confirm message, either positive or negative, i.e. either tell YuMi to
-        execute the action or test a new block.
-        param: data [dict]
-        return: N/A
-        """
-        # If a confirmation is recieved, send execute command to yumi, remove the block from the 
-        # data base and send a speech command to hololens.
-        if "yes" in data["feedback"]:
-            self.send("yumi;execute$")
-            time.sleep(1)
-            self.send("hololens;speech;ok$")
-        # If a negation is recieved and there are blocks still in the list then try the next block
-        # in the list, else start over.
-        else:
-            if self.data_handler.current_filter:
-                current_block = self.data_handler.get_next_block()
-                self.send("yumi;{};{},{}$".format(self.current_action,
-                                                  current_block["x"],
-                                                  current_block["y"]))
-            else:
-                self.reset()
-
-    def action(self, data):
-        """ Parse the actions from the architecture.
-        param: action_msg [dict]
-        return: N/A
-        {'skills': [], 'attributes': ['blue'], 'objects': ['lego'], 'feedback': []}
-        """
-
-        # If there are skills within the message, update the current skills to the first on in the 
-        # list of skills.
-        if data["skills"]:
-            self.current_action = data["skills"][0]
-        self.data_handler.filter(data["attributes"])
+        #self.log("Parsing data: {}".format(data))
         
-        # No objects are found, the current turn is restarted.
-        if not self.data_handler.current_filter:
-            self.reset()
-        # If only a few objects remain in the data base, the action is visualized to the user.
-        elif len(self.data_handler.current_filter) < 4:
-            current_block = self.data_handler.get_next_block()
-            self.send("yumi;{};{},{}$".format(self.current_action,
-                                              current_block["x"],
-                                              current_block["y"]))
-        # If there are many objects left the hololens will highlight the ones considered
+        # Preporcess the data message.
+        data = data.replace("$", "")
+        data = data.split(";")
+        for i in range(1, len(data)):
+            try:
+                data[i] = ast.literal_eval(data[i])
+            except SyntaxError:
+                return
+        if data[0] == "update":
+            self._update_block_array(data)
+        elif data[0] == "data":
+            self._disambiguate(data)
         else:
-            msg = []
-            for item in self.data_handler.get_all_considered():
-                msg.append("{},{},{}".format(item["id"], item["x"][:5], item["y"][:5]))
-            msg = ";".join(msg)
-            msg = "{};{}$".format("hololens", msg)
-            self.send(msg)
+            self.log("Unknown message type: {}".format(data[0]))
 
-    def update(self, update_msg):
-        """ Update the data-base
-            param: update_msg [String, format defined in README.md]
-            return: N/A
+    def _disambiguate(self, data):
+        data = data[1]
+        p1a = []
+        attention_pos = []
+        # Extract verbal requests
+        if "P1A" in data.keys():
+            p1a = [attr for attr in data["P1A"] if attr in self.known_attr]
+        # Extract gaze
+        if "P1GP" in data.keys():
+            attention_pos = data["P1GP"]
+        min_dist = None
+        attention_block = None
+        if attention_pos:
+            min_dist = 10000
+        # Set the first_disamb flag to indicate that there exists information.
+        if p1a and self.blocks:
+            self.first_disamb = True
+
+        # Iterate through the blocks and filter
+        for block in self.blocks:
+            # Handle verbal attribute
+            if p1a and not block["c"] in p1a:
+                block["include"] = False
+            elif p1a and block["c"] in p1a:
+                block["include"] = True
+            # Handle gaze
+            if attention_pos:
+                dist = self._dist([block["x"], block["y"]], attention_pos)
+                if dist < min_dist:
+                    min_dist = dist
+                    attention_block = block
+        if attention_block:
+            attention_block["at"] += 1
+
+        # Iterate through the blocks and calculate likelihood
+        inc_list = [block["at"] for block in self.blocks if block["include"]]
+        nr_block = len(inc_list)
+        tot_att = sum(inc_list)
+        tot_lh = 0
+        for block in self.blocks:
+            if block["include"]:
+                if not tot_att == 0:
+                    lh = (1/float(nr_block)) * (block["at"]/float(tot_att))
+                else:
+                    lh = (1/float(nr_block))
+                tot_lh += lh
+                block["lh"] = lh
+            else:
+                block["lh"] = 0.0
+        if not tot_lh:
+            tot_lh = len(self.blocks)
+        for block in self.blocks:
+            block["lh"] = block["lh"]/tot_lh
+        
+        # Test if the likelihood is high enough, if so execute command. If the likelihood is not 
+        # high enough but there is a positive feedback in the P1F message then the action should 
+        # be executed any way.
+        """"if "P1F" in data.keys():
+            if "yes" in data["P1F"]:
+                self._test_if_execute(th=0)
+            else:
+                self._test_if_execute()
+        else:
+            self._test_if_execute()"""
+        self._test_if_execute()
+
+
+    def _test_if_execute(self, th=None):
+        """ Test if the likelihood is high enough, if so send a execute command to YuMi.
         """
-        update_msg = update_msg.replace("$", "")
-        update_msg = update_msg.split(";")
-        for block in update_msg:
-            block = block.split(",")
-            if len(block) > 1:
-                update_dict = {"x":block[0], "y":block[1]}
-                if len(block) > 2:
-                    update_dict[block[2].split(":")[0]] = block[2].split(":")[1]
-                if len(block) > 3:
-                    update_dict[block[3].split(":")[0]] = block[3].split(":")[1]
-                self.data_handler.update(update_dict)
+        if not th:
+            th = self.likelihood_threshold
 
-    def send(self, msg):
+        if not self.first_disamb:
+            return True
+        # Extract the block with the highest likelihood
+        most_likely_block = sorted(self.blocks, key=lambda k: k['lh'], reverse=True)[0]
+        if most_likely_block["lh"] >= th:
+            self._send("yumi;{};{};{}$".format(self.current_action,
+                                              most_likely_block["x"],
+                                              most_likely_block["y"]))
+            #self._send("yumi;{};{},{}$".format(self.current_action,
+            #                                  most_likely_block["lh"],
+            #                                 th))
+            self._reset()
+            return True
+        return False
+
+    def _dist(self, pos1, pos2):
+        """ Calculate and return the euclidean distance.
+        """
+        return math.sqrt(sum([(a - b) ** 2 for a, b in zip(pos1, pos2)]))
+    
+    def _update_block_array(self, data):
+        """ Update the self.blocks list either add new blocks or edit their positions and colors. 
+        """
+        data.pop(0)
+        for new_block in data:
+            # Test if the object has been seen before using its id.
+            block_in_list = next((item for item in self.blocks if item["id"] == new_block["id"]), None)
+            if block_in_list:
+                # This block is already in the list, update the list
+                for key, value in new_block.items():
+                     block_in_list[key] = value
+            else:
+                # This block was not in the list, add it
+                new_block["lh"] = 0
+                new_block["at"] = 0
+                new_block["include"] = True
+                self.blocks.append(new_block)
+        # Iterate through the blocks and comform the HSV colors to string values.
+        for block in self.blocks:
+            if isinstance(block["c"], int):
+                block["c"] = self._hsv_to_string(block["c"])
+        #self._print_blocks()
+    
+    def _print_blocks(self):
+        threading.Timer(1.0, self._print_blocks).start()
+        clear = "\n" * 100
+        #while True:
+        print(clear)
+        print("_"*124)
+        print_list = []
+        if self.blocks:
+            print_list = sorted(self.blocks, key=lambda k: k['id'])
+            highest_lh = sorted(self.blocks, key=lambda k: k['lh'], reverse=True)[0]
+            header = ["id", "x", "y", "c", "at", "include", "lh"]  
+            header_str = ""
+            for col in header:
+                header_str += "{:<11}".format(col)
+            print(header_str)
+        row_str = ""
+        for block in print_list:
+            for col in header:
+                if col == "lh":
+                    nr_lines = int(block[col]*50)
+                    nr_white = 50 - nr_lines
+                    str_ = "[" + "|"*nr_lines + " "*nr_white + "] {0:.2f}%".format(block[col]*100)
+                elif isinstance(block[col], float):
+                    str_ = "{0:.4f}".format(block[col])
+                else:
+                    str_ = str(block[col])
+                row_str += "{:<11}".format(str_)
+            if highest_lh["id"] == block["id"]:
+                row_str += "\t<=="
+            row_str += "\n"
+        print(row_str)
+        print("_"*124)
+
+    def _hsv_to_string(self, hsv):
+        hsv *= 2
+        # Test if yellow
+        if hsv > 30 and hsv <= 90:
+            return "yellow"
+        # Test if green
+        elif hsv > 90 and hsv <= 180:
+            return "green"
+        elif hsv > 180 and hsv <= 300:
+            return "blue"
+        return "red"
+
+    def _send(self, msg):
         """ Sends a message
             param: msg [String]
             return: None
         """
-        self.log("Interpreter is sending: {}".format(msg))
+        #self.log("Interpreter is sending: {}".format(msg))
         os.write(self.pipe_out, msg.encode("utf-8"))
         sys.stdout.flush()
-
-    def reset(self):
-        """ Reset the variables for a new round.
-            param: N/A
-            return: None
-        """
-        self.current_action = None
-        self.action_dict = {}
-        self.current_block = None
-        self.data_handler.reset_filter()
 
     def log(self, message):
         """ Send the message to the log queue
@@ -190,11 +267,3 @@ class Interpreter(Process):
         """
         if self.log_queue:
             self.log_queue.put("Interpreter#{}".format(message))
-    
-    def print_state(self):
-        print("======Interpeter state======")
-        print("current action:\t{}".format(self.current_action))
-        print("nr items      :\t{}".format(len(self.data_handler.current_filter)))
-        print("current attributes:")
-        for attribute in self.data_handler.current_attributes:
-            print("\t{}".format(attribute))
