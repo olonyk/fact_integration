@@ -32,7 +32,7 @@ class ArchitectureDummy(Process):
         self.p1a = ["red", "blue", "left", "right"]
         self.p1n = ["block", "computer", "snus", "lego block"]
         self.p1v = ["pick", "push", "hide"]
-        self.p1f = ["","yes"]
+        self.p1f = ["","","","","","","","yes"]
         self.p1g = [""]
         self.p1h = [""]
 
