@@ -1,6 +1,6 @@
 
 # FACT INTEGRATION KERNEL
-The kernel ([Olov Nykvist](onykvist@kth.se)) is a node of the fact integration system operating between "The Architecture" ([TMH, Dimosthenis Kontogiorgos](diko@kth.se)), the Hololens module ([Elena Sibirtseva](elenasi@kth.se)) and the underlying ROS-network ([Hakan Karaoguz,](hkarao@kth.se), [Robert Krug](rkrug@kth.se)). This README describes the state of the kernel after the integration week 2017-12-15.
+The kernel ([Olov Nykvist](onykvist@kth.se)) is a node of the fact integration system operating between "The Architecture" ([TMH, Dimosthenis Kontogiorgos](diko@kth.se)), the Hololens module ([Elena Sibirtseva](elenasi@kth.se)) and the underlying ROS-network ([Hakan Karaoguz](hkarao@kth.se), [Robert Krug](rkrug@kth.se)). This README describes the state of the kernel after the integration week 2017-12-15.
 
 ### Kernel
 The system is launched by calling
@@ -34,7 +34,7 @@ If, after likelihood calculations, any of the objects has a higher `lh` value th
 The likelihood is calculated for every object during every call to the `_disambiguate()` function. Two factors affects the likelihood value of an object; `include` and `at`. If `include` is set to `False` for an object the likelihood from include (`lh_i`) will be 0, and 1/(total number of `include:True`) otherwise. The `at` is an integer counter that indicates how many times its object has been the subject of the gaze. The likelihood for an object is thus calculated by `at`/`at_tot` * `lh_i`, and then normalized so that `lh` for all objects sum to 1.
 
 ### Dummies
-
+The dummies are for testing and developement purposes. The YuMi dummy sends update messages to the interpreter so the interpreter can build an attention table. The architecture sends random gaze and verbal information to the interpreter.
 
 ### Server
 
